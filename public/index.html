@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Botów</title>
+    <style>
+        body { background: #050b14; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        .panel { background: #0f172a; padding: 20px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
+        input, button { width: 90%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
+        button { background: #10b981; color: white; font-weight: bold; cursor: pointer; }
+        button.stop { background: #ef4444; }
+        #logs { background: #000; text-align: left; padding: 10px; height: 200px; overflow-y: scroll; font-size: 12px; margin-top: 15px; border-radius: 5px; border: 1px solid #1e293b; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>Minecraft Bot</h2>
+        <input type="text" id="nick" placeholder="Nick bota">
+        <input type="password" id="pass" placeholder="Hasło">
+        <button onclick="startBot()">START</button>
+        <button class="stop" onclick="stopBot()">STOP</button>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        async function startBot() {
+            const nick = document.getElementById('nick').value;
+            const pass = document.getElementById('pass').value;
+            const res = await fetch('/api/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nick, password: pass })
+            });
+            if (!res.ok) alert("Błąd: bot już działa");
+        }
+
+        async function stopBot() {
+            await fetch('/api/stop', { method: 'POST' });
+        }
+
+        setInterval(async () => {
+            const res = await fetch('/api/logs');
+            const logs = await res.json();
+            const logDiv = document.getElementById('logs');
+            logDiv.innerText = logs.join('\n');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }, 1000);
+    </script>
+</body>
+</html>
