@@ -1,12 +1,15 @@
 {
-  "name": "minecraft-bot-panel",
+  "name": "mc-boty-afk",
   "version": "1.0.0",
+  "description": "System botów AFK",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "mineflayer": "^4.20.0"
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.5",
+    "vec3": "^0.1.10"
   }
 }
