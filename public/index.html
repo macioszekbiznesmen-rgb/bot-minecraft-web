@@ -3,39 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Botów</title>
+    <title>MC BOTY - PANEL ROBOTNIKÓW</title>
     <style>
-        body { background: #050b14; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .panel { background: #0f172a; padding: 20px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
-        input, button { width: 90%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
-        button { background: #10b981; color: white; font-weight: bold; cursor: pointer; }
+        body { background: #050b14; color: #fff; font-family: sans-serif; margin: 0; padding: 20px; }
+        header { text-align: center; font-size: 36px; font-weight: bold; color: #8b5cf6; margin-bottom: 20px; text-shadow: 0 0 10px rgba(139, 92, 246, 0.5); }
+        .container { display: flex; justify-content: center; max-width: 100%; margin: 0 auto; }
+        .panel { width: 100%; max-width: 1200px; background: #0f172a; padding: 30px; border-radius: 15px; border: 2px solid #1e293b; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .panel h2 { color: #8b5cf6; text-align: center; font-size: 28px; margin-top: 0; margin-bottom: 20px; }
+        label { font-size: 14px; color: #94a3b8; margin-bottom: 5px; display: block; }
+        input { width: 100%; padding: 12px; margin: 5px 0 20px; background: #050b14; border: 1px solid #334155; color: #fff; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        input:focus { outline: none; border-color: #8b5cf6; }
+        button { width: 100%; padding: 15px; background: #10b981; border: none; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; margin-bottom: 15px; transition: 0.2s; }
+        button:hover { background: #059669; transform: scale(1.01); }
         button.stop { background: #ef4444; }
-        #logs { background: #000; text-align: left; padding: 10px; height: 200px; overflow-y: scroll; font-size: 12px; margin-top: 15px; border-radius: 5px; border: 1px solid #1e293b; }
+        button.stop:hover { background: #dc2626; }
+        .bot-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; margin-bottom: 20px; background: #050b14; border: 1px solid #334155; border-radius: 8px; }
+        .bot-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #1e293b; font-size: 16px; }
+        .bot-list li:last-child { border-bottom: none; }
+        .bot-list li button { width: auto; padding: 5px 10px; margin: 0; background: #ef4444; font-size: 14px; border-radius: 5px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+        #logs { background: #000; color: #10b981; padding: 15px; font-family: monospace; font-size: 14px; height: 250px; overflow-y: auto; white-space: pre-wrap; margin-top: 20px; border-radius: 10px; border: 1px solid #1e293b; }
     </style>
 </head>
 <body>
-    <div class="panel">
-        <h2>Minecraft Bot</h2>
-        <input type="text" id="nick" placeholder="Nick bota">
-        <input type="password" id="pass" placeholder="Hasło">
-        <button onclick="startBot()">START</button>
-        <button class="stop" onclick="stopBot()">STOP</button>
-        <div id="logs"></div>
+    <header>MC BOTY</header>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>PANEL - ROBOTNIKÓW</h2>
+            
+            <div class="grid-2">
+                <div>
+                    <label>IP / Serwer Minecraft:</label>
+                    <input type="text" id="host" placeholder="np. minestar.pl">
+                </div>
+                <div>
+                    <label>Hasło dla wszystkich botów:</label>
+                    <input type="password" id="password" placeholder="Wpisz hasło">
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <label>Cooldown (w sekundach):</label>
+                    <input type="number" id="cooldown" placeholder="np. 5">
+                </div>
+                <div>
+                    <label>Dodaj bota (wpisz nick):</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="nickInput" placeholder="Wpisz nick" style="margin: 0;">
+                        <button onclick="addBot()" style="width: 60px; margin: 0; padding: 10px;">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <label>Lista botów:</label>
+            <ul class="bot-list" id="botList"></ul>
+
+            <button onclick="startBots()">START BOTY</button>
+            <button class="stop" onclick="stopBots()">STOP BOTY</button>
+        </div>
     </div>
 
+    <div id="logs">[SYSTEM] Gotowy do pracy...</div>
+
     <script>
-        async function startBot() {
-            const nick = document.getElementById('nick').value;
-            const pass = document.getElementById('pass').value;
-            const res = await fetch('/api/start', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ nick, password: pass })
-            });
-            if (!res.ok) alert("Błąd: bot już działa");
+        let bots = [];
+
+        window.onload = () => {
+            document.getElementById('host').value = localStorage.getItem('mc_host') || '';
+            document.getElementById('password').value = localStorage.getItem('mc_password') || '';
+            document.getElementById('cooldown').value = localStorage.getItem('mc_cooldown') || '5';
+            
+            const savedBots = localStorage.getItem('mc_bots');
+            if (savedBots) {
+                bots = JSON.parse(savedBots);
+                renderBots();
+            }
+        };
+
+        function saveData() {
+            localStorage.setItem('mc_host', document.getElementById('host').value);
+            localStorage.setItem('mc_password', document.getElementById('password').value);
+            localStorage.setItem('mc_cooldown', document.getElementById('cooldown').value);
+            localStorage.setItem('mc_bots', JSON.stringify(bots));
         }
 
-        async function stopBot() {
+        function addBot() {
+            const input = document.getElementById('nickInput');
+            const nick = input.value.trim();
+            if (nick && !bots.includes(nick)) {
+                bots.push(nick);
+                input.value = '';
+                renderBots();
+                saveData();
+            }
+        }
+
+        function removeBot(index) {
+            bots.splice(index, 1);
+            renderBots();
+            saveData();
+        }
+
+        function renderBots() {
+            const list = document.getElementById('botList');
+            list.innerHTML = '';
+            bots.forEach((nick, i) => {
+                const li = document.createElement('li');
+                li.innerHTML = `${nick} <button onclick="removeBot(${i})">X</button>`;
+                list.appendChild(li);
+            });
+        }
+
+        document.getElementById('host').addEventListener('input', saveData);
+        document.getElementById('password').addEventListener('input', saveData);
+        document.getElementById('cooldown').addEventListener('input', saveData);
+
+        async function startBots() {
+            const host = document.getElementById('host').value;
+            const password = document.getElementById('password').value;
+            const cooldown = document.getElementById('cooldown').value;
+            
+            await fetch('/api/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ botsList: bots, password, cooldown, host })
+            });
+        }
+
+        async function stopBots() {
             await fetch('/api/stop', { method: 'POST' });
         }
 
