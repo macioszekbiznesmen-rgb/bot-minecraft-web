@@ -1,6 +1,5 @@
 const express = require('express');
 const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const app = express();
 
 app.use(express.json());
@@ -14,7 +13,6 @@ let lastLogMessage = "";
 function addLog(text) {
     if (text === lastLogMessage) return;
     lastLogMessage = text;
-
     const time = new Date().toLocaleTimeString();
     const logText = `[${time}] ${text}`;
     logs.push(logText);
@@ -37,26 +35,47 @@ function createBot(nick, password, host) {
             acceptResourcePack: true
         });
 
-        bot.loadPlugin(pathfinder);
+        // Oszukiwanie: Wysyłanie pakietu Client Settings
+        bot._client.on('login', () => {
+            bot._client.write('settings', {
+                locale: 'pl_PL',
+                viewDistance: 2,
+                chatColors: true,
+                chat: 0,
+                difficulty: 2,
+                showCape: true,
+                particleStatus: 0,
+                mainHand: 1,
+                enableTextFiltering: false,
+                enableServerListing: true
+            });
+            
+            // Wysyłanie marki klienta (udawanie oryginalnego Minecrafta)
+            bot._client.write('custom_payload', {
+                channel: 'minecraft:brand',
+                data: Buffer.from([11, 118, 97, 110, 105, 108, 108, 97]) // "vanilla"
+            });
+            
+            addLog(`[BOT] ${nick} wysłał pakiety udające oryginalnego klienta.`);
+        });
 
-        let hasMoved = false;
+        let moveInterval = null;
         let isRegistered = false;
-
-        const startMoving = () => {
-            if (hasMoved) return;
-            hasMoved = true;
-            
-            addLog(`[BOT] ${nick} zaczyna ruch (pathfinder).`);
-            const defaultMove = new Movements(bot);
-            bot.pathfinder.setMovements(defaultMove);
-            
-            const pos = bot.entity.position;
-            const target = new goals.GoalNear(pos.x + 5, pos.y, pos.z + 5, 1);
-            bot.pathfinder.setGoal(target);
-        };
 
         bot.on('spawn', () => {
             addLog(`[BOT] ${nick} pojawił się w świecie.`);
+            
+            // Symulacja ruchu z opóźnieniami
+            moveInterval = setInterval(() => {
+                if (Math.random() > 0.5) {
+                    bot.setControlState('forward', true);
+                    setTimeout(() => bot.setControlState('forward', false), 200);
+                }
+                if (Math.random() > 0.7) {
+                    bot.swingArm('right');
+                }
+                bot.look(Math.random() * 6.28, 0, true);
+            }, 1000);
         });
 
         bot.on('resourcePack', () => {
@@ -74,12 +93,6 @@ function createBot(nick, password, host) {
                         bot.simpleClick.leftMouse(greenSlot);
                     }, 800);
                 }
-            }
-        });
-
-        bot.on('windowClose', () => {
-            if (isRegistered && !hasMoved) {
-                startMoving();
             }
         });
 
@@ -115,7 +128,7 @@ function createBot(nick, password, host) {
             }
 
             if (msg.includes("Weryfikacja pozycji") || msg.includes("Zacznij się poruszać")) {
-                startMoving();
+                addLog(`[BOT] ${nick} próbuje przejść weryfikację.`);
                 return;
             }
 
@@ -130,6 +143,7 @@ function createBot(nick, password, host) {
 
         bot.on('end', () => {
             addLog(`[BOT] ${nick} rozłączony.`);
+            if (moveInterval) clearInterval(moveInterval);
             delete bots[nick];
         });
 
